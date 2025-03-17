@@ -1,0 +1,43 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+
+# Fonction pour scraper une page
+def scrape_page(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, "html.parser")
+        books = []
+        for book in soup.select("article.product_pod"):
+            title = book.select_one("h3 a")["title"]
+            price = book.select_one("p.price_color").text.strip()
+            availability = book.select_one("p.availability").text.strip()
+            rating = book.select_one("p.star-rating")["class"][1]  # Exemple : "Three" pour 3 étoiles
+            link = book.select_one("h3 a")["href"]
+            books.append({
+                "Titre": title,
+                "Prix": price,
+                "Disponibilité": availability,
+                "Note": rating,
+                "Lien": f"http://books.toscrape.com/catalogue/{link}",
+            })
+        return books
+    else:
+        print(f"Erreur : Impossible d'accéder à la page {url} (code {response.status_code})")
+        return []
+
+# Scraper toutes les pages
+all_books = []
+base_url = "http://books.toscrape.com/catalogue/page-{}.html"
+for page in range(1, 51):  # Il y a 50 pages au total
+    url = base_url.format(page)
+    print(f"Scraping {url}...")
+    all_books.extend(scrape_page(url))
+
+# Convertir les données en DataFrame Pandas
+df = pd.DataFrame(all_books)
+
+# Sauvegarder les données dans un fichier CSV
+df.to_csv("all_books_to_scrape.csv", index=False)
+
+print(f"{len(all_books)} livres scrapés et sauvegardés dans all_books_to_scrape.csv")
